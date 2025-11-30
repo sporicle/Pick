@@ -9,24 +9,24 @@ function decodeBase58(str) {
     for (let i = 0; i < str.length; i++) {
         let carry = BASE58_ALPHABET.indexOf(str[i]);
         if (carry < 0) throw new Error('Invalid base58 character');
-        
+
         for (let j = 0; j < bytes.length; j++) {
             carry += bytes[j] * 58;
             bytes[j] = carry & 0xff;
             carry >>= 8;
         }
-        
+
         while (carry > 0) {
             bytes.push(carry & 0xff);
             carry >>= 8;
         }
     }
-    
+
 
     for (let i = 0; i < str.length && str[i] === '1'; i++) {
         bytes.push(0);
     }
-    
+
     return new Uint8Array(bytes.reverse());
 }
 
@@ -65,7 +65,7 @@ function obfuscateRpcUrl(url) {
 function maskRpcUrlInput() {
     const rpcInput = document.getElementById('rpcUrl');
     const actualUrl = rpcInput.value;
-    
+
     if (actualUrl && actualUrl.length > 0) {
 
         rpcInput.setAttribute('data-actual-url', actualUrl);
@@ -76,7 +76,7 @@ function maskRpcUrlInput() {
 function unmaskRpcUrlInput() {
     const rpcInput = document.getElementById('rpcUrl');
     const actualUrl = rpcInput.getAttribute('data-actual-url');
-    
+
     if (actualUrl) {
         rpcInput.value = actualUrl;
         rpcInput.removeAttribute('data-actual-url');
@@ -132,7 +132,7 @@ function loadPersistedData() {
         } catch (error) {
             console.error('Error loading settings:', error);
         }
-        } else {
+    } else {
 
         const defaultRpcUrl = '';
         document.getElementById('rpcUrl').value = defaultRpcUrl;
@@ -240,13 +240,13 @@ function log(message, type = 'info') {
     const entry = document.createElement('div');
     entry.className = `log-entry ${type}`;
     const timestamp = new Date().toLocaleTimeString();
-    
+
 
     const formattedMessage = message.replace(
-        /(https:\/\/solscan\.io\/tx\/[a-zA-Z0-9]+)/g, 
+        /(https:\/\/solscan\.io\/tx\/[a-zA-Z0-9]+)/g,
         '<a href="$1" target="_blank" style="color: #58a6ff; text-decoration: underline;">signature</a>'
     );
-    
+
     entry.innerHTML = `<span class="timestamp">[${timestamp}]</span>${formattedMessage}`;
     logContainer.appendChild(entry);
     logContainer.scrollTop = logContainer.scrollHeight;
@@ -271,11 +271,11 @@ async function refreshConnection() {
 
 async function getFreshBlockhash(currentSlot) {
 
-    if (blockhashCache.blockhash && blockhashCache.lastFetchedSlot && 
+    if (blockhashCache.blockhash && blockhashCache.lastFetchedSlot &&
         currentSlot - blockhashCache.lastFetchedSlot < 100) {
         return blockhashCache;
     }
-    
+
     const { blockhash } = await connection.getLatestBlockhash('confirmed');
     blockhashCache = { blockhash, lastFetchedSlot: currentSlot };
     return blockhashCache;
@@ -284,30 +284,30 @@ async function getFreshBlockhash(currentSlot) {
 function updateStats() {
     let actualWinRate = '-';
     if (betHistory.length > 0) {
-        const validBets = betHistory.filter(bet => 
-            bet.betSquares && bet.betSquares.length > 0 && 
+        const validBets = betHistory.filter(bet =>
+            bet.betSquares && bet.betSquares.length > 0 &&
             bet.result !== 'Skipped' && !bet.result.startsWith('Missed')
         );
-        
+
         if (validBets.length > 0) {
             const wins = validBets.filter(bet => bet.won === true).length;
             actualWinRate = ((wins / validBets.length) * 100).toFixed(1) + '%';
         }
     }
     document.getElementById('actualWinRate').textContent = actualWinRate;
-    
+
     document.getElementById('roundsPlayed').textContent = stats.roundsPlayed;
     document.getElementById('roundsWon').textContent = stats.roundsWon;
     document.getElementById('roundsSkipped').textContent = stats.roundsSkipped;
-    
+
 
     let expectedWinRate = '-';
     if (betHistory.length > 0) {
-        const validBets = betHistory.filter(bet => 
-            bet.betSquares && bet.betSquares.length > 0 && 
+        const validBets = betHistory.filter(bet =>
+            bet.betSquares && bet.betSquares.length > 0 &&
             bet.result !== 'Skipped' && !bet.result.startsWith('Missed')
         );
-        
+
         if (validBets.length > 0) {
             const totalExpectedWinRate = validBets.reduce((sum, bet) => {
                 const skip = bet.skip !== undefined ? bet.skip : 0;
@@ -319,22 +319,22 @@ function updateStats() {
         }
     }
     document.getElementById('expectedWinRate').textContent = expectedWinRate;
-    
+
     saveStats();
 }
 
 function updateDeployedGrid(deployed) {
     const grid = document.getElementById('deployedGrid');
     if (!grid) return;
-    
+
     grid.innerHTML = '';
-    
+
 
     const values = deployed.map(val => Number(val));
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
     const range = maxVal - minVal || 1;
-    
+
 
     const betAmount = parseFloat(document.getElementById('betAmount').value) || 0.01;
     const skip = parseInt(document.getElementById('lowestSquaresSkip').value) || 0;
@@ -342,39 +342,39 @@ function updateDeployedGrid(deployed) {
 
     let optimalStrategy = calculateOptimalEV(deployed, betAmount, skip, 25, 0, varianceReductionEnabled);
     const optimalSquares = optimalStrategy ? optimalStrategy.indices : [];
-    
+
 
     for (let i = 0; i < 25; i++) {
         const cell = document.createElement('div');
         cell.className = 'grid-cell';
-        
+
 
         if (optimalSquares.includes(i)) {
             cell.classList.add('optimal-square');
         }
-        
+
 
         const value = Number(deployed[i]);
         const normalized = (value - minVal) / range;
         const r = Math.floor(45 + normalized * 68);
         const g = Math.floor(53 + normalized * 75);
         const b = Math.floor(72 + normalized * 78);
-        
+
         cell.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-        
+
 
         const indexDiv = document.createElement('div');
         indexDiv.className = 'cell-index';
         indexDiv.textContent = `#${i}`;
-        
+
         const valueDiv = document.createElement('div');
         valueDiv.className = 'cell-value';
         const solValue = value / 1_000_000_000;
         valueDiv.textContent = solValue.toFixed(4);
-        
+
         cell.appendChild(indexDiv);
         cell.appendChild(valueDiv);
-        
+
         grid.appendChild(cell);
     }
 }
@@ -415,9 +415,9 @@ async function getMinerData() {
         return null;
     }
     const view = new DataView(accountInfo.data.buffer);
-    
 
-    
+
+
     return {
         rewards_sol: view.getBigUint64(488, true),
         rewards_ore: view.getBigUint64(496, true),
@@ -431,32 +431,32 @@ async function getMinerData() {
 async function getTreasuryData(forceRefresh = false) {
     const now = Date.now();
     const currentRoundId = Number(document.getElementById('currentRound')?.textContent || 0);
-    
 
-    if (!forceRefresh && 
-        motherlodeCache.value > 0 && 
+
+    if (!forceRefresh &&
+        motherlodeCache.value > 0 &&
         (now - motherlodeCache.lastFetched) < MOTHERLODE_CACHE_TTL &&
         currentRoundId === motherlodeCache.lastRound) {
         return { motherlode: motherlodeCache.value };
     }
-    
+
     const treasuryAddress = treasuryPDA();
     const accountInfo = await connection.getAccountInfo(treasuryAddress);
     if (!accountInfo) {
         throw new Error('Treasury account not found');
     }
     const view = new DataView(accountInfo.data.buffer);
-    
+
 
     const motherlodeValue = Number(view.getBigUint64(16, true)) / Number(10n ** BigInt(11));
-    
+
 
     motherlodeCache = {
         value: motherlodeValue,
         lastFetched: now,
         lastRound: currentRoundId
     };
-    
+
     return {
         motherlode: motherlodeValue
     };
@@ -465,42 +465,42 @@ async function getTreasuryData(forceRefresh = false) {
 function findXLowestTiles(deployed, count, skip = 0) {
 
     const tiles = deployed.map((value, index) => ({ index, value }));
-    
+
 
     tiles.sort((a, b) => Number(a.value - b.value));
-    
+
 
     const lowestTiles = tiles.slice(skip, skip + count);
     const indices = lowestTiles.map(t => t.index);
-    
+
     return indices;
 }
 
 function calculateEV(deployed, tileIndices, betAmount, motherlode = 0) {
 
     const orePrice = parseFloat(document.getElementById('orePrice').value);
-    
+
 
     const betLamports = betAmount * LAMPORTS_PER_SOL;
     const totalSquares = 25;
-    
+
     let totalEV = 0;
     const totalBet = tileIndices.length * betLamports;
-    
+
 
     for (let winningSquare = 0; winningSquare < totalSquares; winningSquare++) {
 
         const didBetOnWinner = tileIndices.includes(winningSquare);
-        
+
         if (!didBetOnWinner) {
 
             continue;
         }
-        
+
 
         const yourShareOnWinner = betLamports;
         const totalOnWinner = Number(deployed[winningSquare]) + yourShareOnWinner;
-        
+
 
         let losingSol = 0;
         for (let i = 0; i < totalSquares; i++) {
@@ -509,52 +509,52 @@ function calculateEV(deployed, tileIndices, betAmount, motherlode = 0) {
                 losingSol += Number(deployed[i]) + yourBetOnSquare;
             }
         }
-        
+
 
         const distributableSol = losingSol * 0.89;
-        
+
         const yourProportionalShare = yourShareOnWinner / totalOnWinner;
         const yourPortion = yourProportionalShare * distributableSol;
-        
+
 
         const oreReward = 1.0 + (motherlode * (1 / 625));
         const oreRewardAfterRefining = oreReward * 0.9;
         const expectedOreReward = yourProportionalShare * oreRewardAfterRefining;
         const oreValueInSol = expectedOreReward * orePrice;
-        
 
-        const yourReturn = yourShareOnWinner + yourPortion + 
-                           (oreValueInSol * LAMPORTS_PER_SOL);
-        
+
+        const yourReturn = yourShareOnWinner + yourPortion +
+            (oreValueInSol * LAMPORTS_PER_SOL);
+
 
         totalEV += (1 / totalSquares) * yourReturn;
     }
-    
+
 
     const netEV = (totalEV - totalBet) / LAMPORTS_PER_SOL;
-    
+
     return netEV;
 }
 
 function calculateOptimalEV(deployed, betPerSquare, skip = 0, maxSquares = 25, motherlode = 0, varianceReduction = false) {
 
     const deployedArray = deployed.map(val => Number(val));
-    
+
 
     const sortedByValue = deployedArray.map((val, idx) => ({ val, idx }))
         .sort((a, b) => a.val - b.val);
-    
+
     let maxEV = -Infinity;
     let bestStrategy = null;
-    
+
 
     const availableSquares = Math.min(25 - skip, maxSquares);
-    
+
 
     if (availableSquares <= 0) {
         return null;
     }
-    
+
 
     let maxEVStrategy = null;
     for (let numSquares = 1; numSquares <= availableSquares; numSquares++) {
@@ -562,7 +562,7 @@ function calculateOptimalEV(deployed, betPerSquare, skip = 0, maxSquares = 25, m
         const indices = sortedByValue.slice(skip, skip + numSquares).map(s => s.idx);
         const ev = calculateEV(deployed, indices, betPerSquare, motherlode);
         const totalBet = betPerSquare * numSquares;
-        
+
         if (ev > maxEV) {
             maxEV = ev;
             maxEVStrategy = {
@@ -581,19 +581,19 @@ function calculateOptimalEV(deployed, betPerSquare, skip = 0, maxSquares = 25, m
             };
         }
     }
-    
+
 
     let varianceReductionSquares = [];
     if (varianceReduction && bestStrategy && maxEV > 0 && maxEVStrategy) {
         const minEV = maxEV - (maxEV * 0.1);
         const maxEVIndices = new Set(maxEVStrategy.indices);
-        
+
 
         for (let numSquares = bestStrategy.numSquares + 1; numSquares <= availableSquares; numSquares++) {
             const indices = sortedByValue.slice(skip, skip + numSquares).map(s => s.idx);
             const ev = calculateEV(deployed, indices, betPerSquare, motherlode);
             const totalBet = betPerSquare * numSquares;
-            
+
 
             if (ev >= minEV) {
                 bestStrategy = {
@@ -611,24 +611,24 @@ function calculateOptimalEV(deployed, betPerSquare, skip = 0, maxSquares = 25, m
             }
         }
     }
-    
+
 
     if (varianceReductionSquares.length > 0) {
         bestStrategy.varianceReductionSquares = varianceReductionSquares;
     }
-    
+
     return bestStrategy;
 }
 
 function addToHistory(round, bet, result, ev, won, boardState, betSquares, finalBoardState = null, finalEv = null, slotsBeforeEnd = null, motherlode = 0, varianceReductionSquares = [], skip = 0, endSlot = null, boardStateSlot = null) {
-    betHistory.unshift({ 
-        round, 
-        bet, 
-        result, 
-        ev, 
+    betHistory.unshift({
+        round,
+        bet,
+        result,
+        ev,
         finalEv,
-        won, 
-        boardState: boardState || [], 
+        won,
+        boardState: boardState || [],
         betSquares: betSquares || [],
         finalBoardState: finalBoardState || null,
         slotsBeforeEnd: slotsBeforeEnd,
@@ -638,12 +638,12 @@ function addToHistory(round, bet, result, ev, won, boardState, betSquares, final
         endSlot: endSlot,
         boardStateSlot: boardStateSlot
     });
-    
+
 
     if (betHistory.length > 10000) {
         betHistory.pop();
     }
-    
+
     updateHistoryDisplay();
     updatePnlMetrics();
     updateStats();
@@ -663,9 +663,9 @@ function updateBetHistoryFinalState(roundId, finalBoardState, finalEv) {
 function updateHistoryDisplay() {
     const container = document.getElementById('historyContainer');
     container.innerHTML = '';
-    
+
     const hideSkipped = document.getElementById('hideSkippedFilter').checked;
-    
+
     betHistory.forEach((bet, index) => {
         if (hideSkipped && (bet.result === 'Skipped' || bet.result.startsWith('Missed'))) {
             return;
@@ -683,13 +683,13 @@ function updateHistoryDisplay() {
         } else {
             row.className = `history-row ${bet.won ? 'win' : 'loss'}`;
         }
-        
+
         const roundCell = document.createElement('div');
         roundCell.textContent = bet.round;
-        
+
         const betCell = document.createElement('div');
         betCell.textContent = bet.bet.toFixed(3);
-        
+
         const resultCell = document.createElement('div');
         let resultText = bet.result;
 
@@ -712,25 +712,25 @@ function updateHistoryDisplay() {
         } else {
             resultCell.style.color = bet.won ? '#7ee787' : '#ff7b72';
         }
-        
+
 
         const numSquares = bet.betSquares ? bet.betSquares.length : 2;
         const skip = bet.skip !== undefined ? bet.skip : 0;
         const availableSquares = 25 - skip;
         const expectedWinRate = (numSquares / availableSquares) * 100;
-        
+
         const expectedWinRateCell = document.createElement('div');
         expectedWinRateCell.textContent = `${expectedWinRate.toFixed(1)}%`;
         expectedWinRateCell.style.color = '#8b949e';
-        
+
 
         const totalBetCost = bet.bet * numSquares;
         const evPercent = (bet.ev / totalBetCost) * 100;
-        
+
         const evCell = document.createElement('div');
         evCell.textContent = evPercent >= 0 ? `+${evPercent.toFixed(1)}%` : `${evPercent.toFixed(1)}%`;
         evCell.style.color = evPercent >= 0 ? '#7ee787' : '#ff7b72';
-        
+
 
         const finalEvCell = document.createElement('div');
         if (bet.finalEv !== null && bet.finalEv !== undefined) {
@@ -741,7 +741,7 @@ function updateHistoryDisplay() {
             finalEvCell.textContent = '-';
             finalEvCell.style.color = '#6e7681';
         }
-        
+
         const boardCell = document.createElement('div');
         if (bet.boardState && bet.boardState.length > 0) {
             const viewBtn = document.createElement('button');
@@ -753,7 +753,7 @@ function updateHistoryDisplay() {
             boardCell.textContent = '-';
             boardCell.style.color = '#6e7681';
         }
-        
+
         const finalCell = document.createElement('div');
         if (bet.finalBoardState && bet.finalBoardState.length > 0) {
             const viewBtn = document.createElement('button');
@@ -765,14 +765,14 @@ function updateHistoryDisplay() {
             finalCell.textContent = '-';
             finalCell.style.color = '#6e7681';
         }
-        
+
         const editCell = document.createElement('div');
         const editBtn = document.createElement('button');
         editBtn.className = 'view-board-btn';
         editBtn.textContent = 'Edit';
         editBtn.onclick = () => showEditModal(index);
         editCell.appendChild(editBtn);
-        
+
         row.appendChild(roundCell);
         row.appendChild(betCell);
         row.appendChild(resultCell);
@@ -782,7 +782,7 @@ function updateHistoryDisplay() {
         row.appendChild(boardCell);
         row.appendChild(finalCell);
         row.appendChild(editCell);
-        
+
         container.appendChild(row);
     });
 }
@@ -796,10 +796,10 @@ async function placeBet(roundId, tileIndices, amount, receiveTime, deployed, cur
     const roundAddress = roundPDA(roundId);
     const minerAddress = minerPDA(wallet.publicKey);
     const automationAddress = automationPDA(wallet.publicKey);
-    
+
 
     const ev = calculateEV(deployed, tileIndices, amount, motherlode);
-    
+
     const instruction = createDeployInstruction(
         wallet.publicKey,
         automationAddress,
@@ -809,66 +809,66 @@ async function placeBet(roundId, tileIndices, amount, receiveTime, deployed, cur
         amount,
         tileIndices
     );
-    
+
 
     const computeBudgetIx = solanaWeb3.ComputeBudgetProgram.setComputeUnitLimit({
         units: 300000
     });
-    
+
     const transaction = new solanaWeb3.Transaction()
         .add(computeBudgetIx)
         .add(instruction);
-        
+
     transaction.feePayer = wallet.publicKey;
-    
+
 
     const { blockhash } = await getFreshBlockhash(currentSlot);
     transaction.recentBlockhash = blockhash;
-    
+
 
     transaction.sign(wallet);
-    
+
 
     const sendTime = Date.now();
     const processingTime = sendTime - receiveTime;
-    
+
 
     const signature = await connection.sendRawTransaction(transaction.serialize(), {
         skipPreflight: true,
         maxRetries: 0
     });
-    
+
     log(`✅ Bet sent! https://solscan.io/tx/${signature} (${processingTime}ms processing)`, 'success');
     stats.roundsPlayed++;
     stats.lastBetRound = roundId;
     updateStats();
-    
+
 
     const boardStateArray = deployed.map(val => Number(val));
     const skip = parseInt(document.getElementById('lowestSquaresSkip').value) || 0;
     addToHistory(roundId, amount, 'Pending', ev, false, boardStateArray, tileIndices, null, null, null, motherlode, varianceReductionSquares, skip, Number(endSlot), fetchSlot);
-    
+
 
     (async () => {
         try {
 
             await connection.confirmTransaction(signature, 'confirmed');
-            
+
             const txInfo = await connection.getTransaction(signature, {
                 commitment: 'confirmed',
                 maxSupportedTransactionVersion: 0
             });
-            
+
             if (txInfo && txInfo.slot) {
                 const txSlot = txInfo.slot;
                 const blocksFromEnd = Number(endSlot) - txSlot;
                 const blocksFromFetch = txSlot - fetchSlot;
-                
+
 
                 if (blocksFromEnd <= 0) {
                     const blocksMissed = Math.abs(blocksFromEnd);
                     log(`❌ Bet missed! Processing: ${processingTime}ms (receive → send), Tx landed ${blocksMissed} blocks after round ended`, 'error');
-                    
+
                     if (stats.roundsPlayed > 0) {
                         stats.roundsPlayed--;
                     }
@@ -879,13 +879,13 @@ async function placeBet(roundId, tileIndices, amount, receiveTime, deployed, cur
                         betHistory[betIndex].result = `Missed (${blocksMissed})`;
                         betHistory[betIndex].won = false;
                         betHistory[betIndex].slotsBeforeEnd = blocksFromEnd;
-                        
+
 
                         try {
                             const finalRoundData = await getRoundData(roundId);
                             const finalBoardStateArray = finalRoundData.deployed.map(val => Number(val));
                             betHistory[betIndex].finalBoardState = finalBoardStateArray;
-                            
+
 
                             const bet = betHistory[betIndex];
                             if (bet.betSquares && bet.betSquares.length > 0) {
@@ -900,13 +900,13 @@ async function placeBet(roundId, tileIndices, amount, receiveTime, deployed, cur
                         } catch (error) {
                             log(`⚠️ Could not fetch final board state for missed bet: ${error.message}`, 'warning');
                         }
-                        
+
                         updateHistoryDisplay();
                         saveHistory();
                     }
                 } else {
                     log(`📊 Block Analysis: Processing: ${processingTime}ms (receive → send), Tx sending: Fetched at slot ${fetchSlot}, landed at slot ${txSlot} (+${blocksFromFetch} blocks), ${blocksFromEnd} blocks before round end`, 'info');
-                    
+
 
                     const betIndex = betHistory.findIndex(b => b.round === roundId && b.result === 'Pending');
                     if (betIndex !== -1) {
@@ -920,33 +920,33 @@ async function placeBet(roundId, tileIndices, amount, receiveTime, deployed, cur
             log(`⚠️ Transaction confirmation failed: ${error.message}`, 'warning');
         }
     })();
-    
+
     return { signature, ev };
 }
 
 async function claimSOL(currentSlot) {
     const minerAddress = minerPDA(wallet.publicKey);
-    
+
     const instruction = createClaimSolInstruction(wallet.publicKey, minerAddress);
-    
+
     const transaction = new solanaWeb3.Transaction().add(instruction);
     transaction.feePayer = wallet.publicKey;
-    
+
     const { blockhash } = await getFreshBlockhash(currentSlot);
     transaction.recentBlockhash = blockhash;
-    
+
     const signature = await solanaWeb3.sendAndConfirmTransaction(
         connection,
         transaction,
         [wallet],
-        { 
+        {
             commitment: 'confirmed',
             maxRetries: 3
         }
     );
-    
+
     log(`✅ SOL claimed! https://solscan.io/tx/${signature}`, 'success');
-    
+
     return signature;
 }
 
@@ -955,7 +955,7 @@ async function checkpoint(roundId, currentSlot) {
     const minerAddress = minerPDA(wallet.publicKey);
     const roundAddress = roundPDA(roundId);
     const treasuryAddress = treasuryPDA();
-    
+
     const instruction = createCheckpointInstruction(
         wallet.publicKey,
         boardAddress,
@@ -963,33 +963,33 @@ async function checkpoint(roundId, currentSlot) {
         roundAddress,
         treasuryAddress
     );
-    
+
     const transaction = new solanaWeb3.Transaction().add(instruction);
     transaction.feePayer = wallet.publicKey;
-    
+
     const { blockhash } = await getFreshBlockhash(currentSlot);
     transaction.recentBlockhash = blockhash;
-    
+
     const signature = await solanaWeb3.sendAndConfirmTransaction(
         connection,
         transaction,
         [wallet],
-        { 
+        {
             commitment: 'confirmed',
             maxRetries: 3
         }
     );
-    
+
     return signature;
 }
 
 async function checkAndClaimSOL(currentSlot) {
     if (claimInProgress) return;
-    
+
     try {
         const minerData = await getMinerData();
         if (!minerData) return;
-        
+
         const rewardsSol = Number(minerData.rewards_sol) / LAMPORTS_PER_SOL;
         if (rewardsSol > 0) {
             claimInProgress = true;
@@ -1011,7 +1011,7 @@ async function checkForWins(currentSlot, currentRoundId) {
     try {
         const minerData = await getMinerData();
         if (!minerData) return;
-        
+
 
         const completedRound = stats.lastBetRound - 1;
         const skippedRound = stats.lastBetRound;
@@ -1022,14 +1022,14 @@ async function checkForWins(currentSlot, currentRoundId) {
             .filter(({ bet }) => bet.result === 'Skipped' && currentRoundId !== null && bet.round < currentRoundId && (!bet.finalBoardState || bet.finalBoardState.length === 0))
             .map(({ idx }) => idx);
         const missedIndex = betHistory.findIndex(b => b.round === completedRound && b.result && b.result.startsWith('Missed'));
-        
+
 
         const currentLifetimeRewardsSol = Number(minerData.lifetime_rewards_sol) / LAMPORTS_PER_SOL;
         const lifetimeRewardsIncreased = currentLifetimeRewardsSol > lastLifetimeRewardsSol;
         if (lifetimeRewardsIncreased) {
             lastLifetimeRewardsSol = currentLifetimeRewardsSol;
         }
-        
+
 
         if (betIndex === -1 && skippedIndices.length === 0 && missedIndex === -1) {
 
@@ -1043,7 +1043,7 @@ async function checkForWins(currentSlot, currentRoundId) {
             }
             return;
         }
-        
+
 
         if (betIndex !== -1 && betHistory[betIndex].result === 'Pending') {
 
@@ -1051,7 +1051,7 @@ async function checkForWins(currentSlot, currentRoundId) {
                 const finalRoundData = await getRoundData(completedRound);
                 const finalBoardStateArray = finalRoundData.deployed.map(val => Number(val));
                 betHistory[betIndex].finalBoardState = finalBoardStateArray;
-                
+
 
                 const bet = betHistory[betIndex];
                 if (bet.betSquares && bet.betSquares.length > 0) {
@@ -1061,12 +1061,12 @@ async function checkForWins(currentSlot, currentRoundId) {
                     const boardStateWithoutBet = finalBoardStateNumber.map((val, idx) => {
                         return bet.betSquares.includes(idx) ? val - betLamports : val;
                     });
-                    
+
                     if (bet.boardState && bet.boardState.length > 0) {
                         const boardStatesMatch = bet.boardState.every((val, idx) => {
                             return Math.abs(val - boardStateWithoutBet[idx]) < 1;
                         });
-                        
+
                         if (boardStatesMatch) {
                             const finalEv = calculateEV(bet.boardState, bet.betSquares, bet.bet, motherlodeAtBetTime);
                             betHistory[betIndex].finalEv = finalEv;
@@ -1082,19 +1082,19 @@ async function checkForWins(currentSlot, currentRoundId) {
             } catch (error) {
                 log(`⚠️ Could not fetch final board state: ${error.message}`, 'warning');
             }
-            
+
 
             const freshMinerData = await getMinerData();
             if (!freshMinerData) {
                 log(`⚠️ Could not fetch miner data for win check`, 'warning');
                 return;
             }
-            
+
 
             const currentRewardsSol = Number(freshMinerData.rewards_sol) / LAMPORTS_PER_SOL;
             const currentLifetimeRewardsSol = Number(freshMinerData.lifetime_rewards_sol) / LAMPORTS_PER_SOL;
             const lifetimeRewardsIncreased = currentLifetimeRewardsSol > lastLifetimeRewardsSol;
-            
+
 
             if (currentRewardsSol > 0 || lifetimeRewardsIncreased) {
 
@@ -1108,21 +1108,21 @@ async function checkForWins(currentSlot, currentRoundId) {
                 } else {
                     log(`🎉 Win detected! (Rewards already claimed)`, 'success');
                 }
-                
+
 
                 betHistory[betIndex].result = 'Win';
                 betHistory[betIndex].won = true;
                 updateHistoryDisplay();
                 updatePnlMetrics();
                 saveHistory();
-                
+
                 updateStats();
-                
+
 
                 if (currentRewardsSol > 0) {
                     await checkAndClaimSOL(currentSlot);
                 }
-                
+
                 processedRounds.add(completedRound);
             } else {
 
@@ -1134,17 +1134,17 @@ async function checkForWins(currentSlot, currentRoundId) {
                 processedRounds.add(completedRound);
             }
         }
-        
+
 
         for (const skippedIndex of skippedIndices) {
             try {
                 const bet = betHistory[skippedIndex];
                 const skippedRoundId = bet.round;
-                
+
                 const finalRoundData = await getRoundData(skippedRoundId);
                 const finalBoardStateArray = finalRoundData.deployed.map(val => Number(val));
                 betHistory[skippedIndex].finalBoardState = finalBoardStateArray;
-                
+
 
                 if (bet.betSquares && bet.betSquares.length > 0) {
                     const motherlodeAtBetTime = bet.motherlode !== undefined ? bet.motherlode : 0;
@@ -1158,7 +1158,7 @@ async function checkForWins(currentSlot, currentRoundId) {
                 log(`⚠️ Could not calculate counterfactual: ${error.message}`, 'warning');
             }
         }
-        
+
 
         if (missedIndex !== -1) {
             try {
@@ -1168,7 +1168,7 @@ async function checkForWins(currentSlot, currentRoundId) {
                     const finalRoundData = await getRoundData(completedRound);
                     const finalBoardStateArray = finalRoundData.deployed.map(val => Number(val));
                     betHistory[missedIndex].finalBoardState = finalBoardStateArray;
-                    
+
 
                     if (bet.betSquares && bet.betSquares.length > 0) {
                         const motherlodeAtBetTime = bet.motherlode !== undefined ? bet.motherlode : 0;
@@ -1180,7 +1180,7 @@ async function checkForWins(currentSlot, currentRoundId) {
                         const finalEv = calculateEV(boardStateWithoutBet, bet.betSquares, bet.bet, motherlodeAtBetTime);
                         betHistory[missedIndex].finalEv = finalEv;
                     }
-                    
+
                     updateHistoryDisplay();
                     saveHistory();
                 }
@@ -1231,7 +1231,7 @@ async function updateOrePrice() {
         const data = await response.json();
         const orePriceUsd = data[ORE_MINT_ADDRESS]?.usdPrice;
         const solPriceUsd = data['So11111111111111111111111111111111111111112']?.usdPrice;
-        
+
         if (orePriceUsd && solPriceUsd) {
             const orePriceSol = orePriceUsd / solPriceUsd;
             const displayText = `${orePriceSol.toFixed(1)} ($${orePriceUsd.toFixed(1)})`;
@@ -1261,7 +1261,7 @@ async function monitorRound() {
         }
         return;
     }
-    
+
     let slotsRemaining = null;
     try {
 
@@ -1271,10 +1271,10 @@ async function monitorRound() {
             await refreshConnection();
             connection._lastRefresh = now;
         }
-        
+
         const boardData = await getBoardData();
         const currentSlot = await connection.getSlot();
-        
+
         const newRoundId = Number(boardData.round_id);
 
         if (currentRoundId !== null && newRoundId !== currentRoundId) {
@@ -1282,26 +1282,26 @@ async function monitorRound() {
         }
         currentRoundId = newRoundId;
         document.getElementById('currentRound').textContent = currentRoundId;
-        
-        updateWalletBalance().catch(() => {});
-        updateOrePrice().catch(() => {});
-        updateUnclaimedOre().catch(() => {});
-        
+
+        updateWalletBalance().catch(() => { });
+        updateOrePrice().catch(() => { });
+        updateUnclaimedOre().catch(() => { });
+
 
         let cachedRoundData = null;
         let cachedTreasuryData = null;
         try {
             cachedRoundData = await getRoundData(currentRoundId);
             updateDeployedGrid(cachedRoundData.deployed);
-            
+
 
             try {
                 cachedTreasuryData = await getTreasuryData();
                 const motherlode = cachedTreasuryData.motherlode;
-                
+
 
                 const expectedOrePerRound = motherlode * (1 / 625);
-                
+
                 const motherlodeDisplay = document.getElementById('motherlodeDisplay');
                 if (motherlodeDisplay) {
 
@@ -1322,30 +1322,30 @@ async function monitorRound() {
 
             console.log('Grid update failed:', error.message);
         }
-        
+
         slotsRemaining = Number(boardData.end_slot) - currentSlot;
         const slotsPerSecond = 2.5;
         const secondsRemaining = Math.max(0, slotsRemaining / slotsPerSecond);
-        
+
 
         const roundWeBetOnEnded = stats.lastBetRound > 1 && (
             currentRoundId !== stats.lastBetRound ||
             (currentRoundId === stats.lastBetRound && slotsRemaining <= 0)
         );
-        
+
         if (roundWeBetOnEnded && !processedRounds.has(stats.lastBetRound - 1)) {
             checkForWins(currentSlot, currentRoundId).catch(err => {
                 log(`⚠️ Error checking for wins: ${err.message}`, 'warning');
             });
         }
-        
+
 
         if (slotsRemaining > 0 && slotsRemaining <= 25 && slotsRemaining > 15) {
             await getFreshBlockhash(currentSlot);
         }
-        
+
         getMinerData().then(minerData => {
-            if (minerData && slotsRemaining > 20 && slotsRemaining <= 140 && 
+            if (minerData && slotsRemaining > 20 && slotsRemaining <= 140 &&
                 minerData.round_id > 0 && minerData.checkpoint_id !== minerData.round_id && !transactionInProgress) {
                 transactionInProgress = true;
                 checkpoint(Number(minerData.round_id), currentSlot).then(() => {
@@ -1355,26 +1355,26 @@ async function monitorRound() {
                     transactionInProgress = false;
                 });
             }
-        }).catch(() => {});
-        
+        }).catch(() => { });
+
         const strategy = document.getElementById('strategySelect').value;
         const useLowestSquaresStrategy = strategy === 'xLowest';
         const slotsThreshold = parseInt(document.getElementById('lowestSquaresSlots').value);
-        
+
 
         let shouldBet = slotsRemaining > 0 && slotsRemaining <= slotsThreshold && currentRoundId !== stats.lastBetRound;
-        
 
-        if (!shouldBet && slotsRemaining > slotsThreshold && slotsRemaining <= slotsThreshold + 8 && currentRoundId !== stats.lastBetRound) {
+
+        if (!shouldBet && slotsRemaining > slotsThreshold && slotsRemaining <= slotsThreshold + 5 && currentRoundId !== stats.lastBetRound) {
             try {
                 const roundData = cachedRoundData || await getRoundData(currentRoundId);
                 const treasuryData = cachedTreasuryData || await getTreasuryData();
                 const motherlode = treasuryData.motherlode;
                 const betAmount = parseFloat(document.getElementById('betAmount').value);
                 const useOptimal = strategy === 'optimal';
-                
+
                 let quickEvPercentage = 0;
-                
+
                 if (useOptimal) {
 
                     const skip = parseInt(document.getElementById('lowestSquaresSkip').value) || 0;
@@ -1396,7 +1396,7 @@ async function monitorRound() {
                     const quickTotalBet = betAmount * quickCheckTiles.length;
                     quickEvPercentage = (quickEv / quickTotalBet) * 100;
                 }
-                
+
 
                 if (quickEvPercentage > 10) {
                     shouldBet = true;
@@ -1406,58 +1406,58 @@ async function monitorRound() {
 
             }
         }
-        
+
 
         if (!shouldBet && slotsRemaining > 0 && slotsRemaining <= slotsThreshold && currentRoundId !== stats.lastBetRound) {
             shouldBet = true;
         }
-        
+
         if (shouldBet) {
             transactionInProgress = true;
             const betStartTime = Date.now();
             try {
                 updateStatus('EVALUATING BET...', 'running');
-                
+
 
                 const roundData = cachedRoundData || await getRoundData(currentRoundId);
                 const fetchSlot = roundData.slot;
                 const receiveTime = Date.now();
                 const betAmount = parseFloat(document.getElementById('betAmount').value);
-                
+
 
                 const treasuryData = cachedTreasuryData || await getTreasuryData();
                 const motherlode = treasuryData.motherlode;
-                
+
 
                 const strategy = document.getElementById('strategySelect').value;
                 const useOptimal = strategy === 'optimal';
                 const evThreshold = parseFloat(document.getElementById('evThreshold').value);
-                
+
                 if (useOptimal) {
                     updateStatus('CALCULATING OPTIMAL STRATEGY...', 'running');
-                    
+
 
                     const skip = parseInt(document.getElementById('lowestSquaresSkip').value) || 0;
 
                     const maxSquares = Math.min(25, slotsRemaining);
                     const varianceReductionEnabled = document.getElementById('varianceReduction').checked;
-                    
+
 
                     let optimalStrategy = calculateOptimalEV(roundData.deployed, betAmount, skip, maxSquares, motherlode, varianceReductionEnabled);
                     let optimalEV = 0;
                     let optimalEvPercentage = 0;
                     let totalBet = 0;
-                    
+
                     if (optimalStrategy) {
                         const betPerSquare = betAmount;
                         totalBet = betAmount * optimalStrategy.numSquares;
                         optimalEV = calculateEV(roundData.deployed, optimalStrategy.indices, betPerSquare, motherlode);
                         optimalEvPercentage = (optimalEV / totalBet) * 100;
                     }
-                    
+
                     if (optimalStrategy && optimalStrategy.ev > 0 && optimalEvPercentage >= evThreshold) {
                         log(`🎯 Using optimal strategy - ${optimalStrategy.numSquares} squares, ${betAmount.toFixed(4)} SOL each (total: ${totalBet.toFixed(4)} SOL, ${optimalEvPercentage.toFixed(2)}% optimal EV)`, 'success');
-                        
+
                         const varianceReductionSquares = optimalStrategy.varianceReductionSquares || [];
                         await placeBet(currentRoundId, optimalStrategy.indices, betAmount, receiveTime, roundData.deployed, currentSlot, fetchSlot, boardData.end_slot, motherlode, varianceReductionSquares);
                         updateStatus('WAITING FOR NEXT ROUND', 'waiting');
@@ -1467,30 +1467,30 @@ async function monitorRound() {
                         let secondaryTotalBet = 0;
                         let secondaryOptimalEV = 0;
                         let secondaryOptimalEvPercentage = 0;
-                        
+
                         if (secondaryOptimalStrategy) {
                             secondaryTotalBet = secondaryBetAmount * secondaryOptimalStrategy.numSquares;
                             secondaryOptimalEV = calculateEV(roundData.deployed, secondaryOptimalStrategy.indices, secondaryBetAmount, motherlode);
                             secondaryOptimalEvPercentage = (secondaryOptimalEV / secondaryTotalBet) * 100;
                         }
-                        
+
                         if (secondaryOptimalStrategy && secondaryOptimalStrategy.ev > 0 && secondaryOptimalEvPercentage >= evThreshold) {
                             log(`🎯 Using secondary bet amount optimal strategy - ${secondaryOptimalStrategy.numSquares} squares, ${secondaryBetAmount.toFixed(4)} SOL each (total: ${secondaryTotalBet.toFixed(4)} SOL, ${secondaryOptimalEV.toFixed(6)} SOL EV, ${secondaryOptimalEvPercentage.toFixed(2)}% return)`, 'success');
-                            
+
                             const secondaryVarianceReductionSquares = secondaryOptimalStrategy.varianceReductionSquares || [];
                             await placeBet(currentRoundId, secondaryOptimalStrategy.indices, secondaryBetAmount, receiveTime, roundData.deployed, currentSlot, fetchSlot, boardData.end_slot, motherlode, secondaryVarianceReductionSquares);
                             updateStatus('WAITING FOR NEXT ROUND', 'waiting');
                         } else {
                             const optimalEvDisplay = optimalStrategy && optimalStrategy.ev > 0 ? optimalEvPercentage.toFixed(2) : 'N/A';
                             const secondaryEvDisplay = secondaryOptimalStrategy && secondaryOptimalStrategy.ev > 0 ? secondaryOptimalEvPercentage.toFixed(2) : 'N/A';
-                            
+
                             log(`⏭️ Skipping round ${currentRoundId}: Optimal strategy EV = ${optimalEvDisplay}% (below ${evThreshold}% threshold). Secondary bet amount EV = ${secondaryEvDisplay}% (also below ${evThreshold}% threshold).`, 'warning');
-                            
+
                             const boardStateArray = roundData.deployed.map(val => Number(val));
                             const skippedIndices = optimalStrategy ? optimalStrategy.indices : [];
                             const skippedVarianceReductionSquares = optimalStrategy ? (optimalStrategy.varianceReductionSquares || []) : [];
                             addToHistory(currentRoundId, betAmount, 'Skipped', optimalEV, false, boardStateArray, skippedIndices, null, null, null, motherlode, skippedVarianceReductionSquares, skip, Number(boardData.end_slot), fetchSlot);
-                            
+
                             stats.roundsSkipped++;
                             stats.lastBetRound = currentRoundId;
                             updateStats();
@@ -1505,7 +1505,7 @@ async function monitorRound() {
                     const ev = calculateEV(roundData.deployed, lowestTiles, betAmount, motherlode);
                     const totalBet = betAmount * lowestTiles.length;
                     const evPercentage = (ev / totalBet) * 100;
-                    
+
 
                     if (evPercentage >= evThreshold) {
                         const squareNumbers = lowestTiles.join(', #');
@@ -1520,7 +1520,7 @@ async function monitorRound() {
                         const secondaryEv = calculateEV(roundData.deployed, lowestTiles, secondaryBetAmount, motherlode);
                         const secondaryTotalBet = secondaryBetAmount * lowestTiles.length;
                         const secondaryEvPercentage = (secondaryEv / secondaryTotalBet) * 100;
-                        
+
                         if (secondaryEv > 0 && secondaryEvPercentage >= evThreshold) {
                             const squareNumbers = lowestTiles.join(', #');
                             log(`🎯 Strategy: Betting on ${count} lowest squares (skipping ${skip}, Squares #${squareNumbers}) - Total bet: ${(secondaryBetAmount * count).toFixed(3)} SOL`, 'info');
@@ -1530,10 +1530,10 @@ async function monitorRound() {
                             updateStatus('WAITING FOR NEXT ROUND', 'waiting');
                         } else {
                             log(`⏭️ Skipping round ${currentRoundId}: Regular strategy EV = ${ev.toFixed(6)} SOL (${evPercentage.toFixed(2)}% return, below ${evThreshold}% threshold). Secondary bet amount EV = ${secondaryEv.toFixed(6)} SOL (${secondaryEvPercentage.toFixed(2)}% return, also below ${evThreshold}% threshold).`, 'warning');
-                            
+
                             const boardStateArray = roundData.deployed.map(val => Number(val));
                             addToHistory(currentRoundId, betAmount, 'Skipped', ev, false, boardStateArray, lowestTiles, null, null, null, motherlode, [], skip);
-                            
+
                             stats.roundsSkipped++;
                             stats.lastBetRound = currentRoundId;
                             updateStats();
@@ -1551,14 +1551,14 @@ async function monitorRound() {
         } else {
             updateStatus(`MONITORING (${slotsRemaining} slots)`, 'running');
         }
-        
+
 
         consecutiveErrors = 0;
-        
+
     } catch (error) {
         log(`❌ Error: ${error.message}`, 'error');
         console.error(error);
-        
+
         consecutiveErrors++;
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
             log(`⚠️ ${consecutiveErrors} consecutive errors detected, refreshing connection...`, 'warning');
@@ -1569,7 +1569,7 @@ async function monitorRound() {
 
         if (botRunning) {
             let pollInterval = 1000;
-            
+
 
             if (slotsRemaining !== null) {
                 if (slotsRemaining > 0 && slotsRemaining <= 30) {
@@ -1589,21 +1589,21 @@ async function monitorRound() {
 document.getElementById('startBtn').addEventListener('click', async () => {
     const privateKeyStr = document.getElementById('privateKey').value.trim();
     const rpcUrl = getActualRpcUrl().trim();
-    
+
     if (!privateKeyStr) {
         alert('Please enter your private key');
         return;
     }
-    
+
     if (!rpcUrl) {
         alert('Please enter your RPC URL');
         return;
     }
-    
+
     try {
 
         let secretKeyBytes;
-        
+
         if (privateKeyStr.startsWith('[')) {
 
             secretKeyBytes = new Uint8Array(JSON.parse(privateKeyStr));
@@ -1615,20 +1615,20 @@ document.getElementById('startBtn').addEventListener('click', async () => {
 
             secretKeyBytes = decodeBase58(privateKeyStr);
         }
-        
+
         wallet = solanaWeb3.Keypair.fromSecretKey(secretKeyBytes);
-        
+
         connection = new solanaWeb3.Connection(rpcUrl, {
             commitment: 'confirmed',
             confirmTransactionInitialTimeout: 60000
         });
         connection._lastRefresh = Date.now();
-        
+
 
         consecutiveErrors = 0;
         blockhashCache = { blockhash: null, lastFetchedSlot: null };
         processedRounds.clear();
-        
+
 
         try {
             const minerData = await getMinerData();
@@ -1639,20 +1639,20 @@ document.getElementById('startBtn').addEventListener('click', async () => {
 
             lastLifetimeRewardsSol = 0;
         }
-        
+
         log(`🚀 Bot started: ${wallet.publicKey.toBase58()}`, 'success');
-        
+
         botRunning = true;
         document.getElementById('startBtn').style.display = 'none';
         document.getElementById('stopBtn').style.display = 'block';
         document.getElementById('privateKey').disabled = true;
         document.getElementById('rpcUrl').disabled = true;
-        
+
         updateStatus('INITIALIZING...', 'running');
-        
+
 
         await monitorRound();
-        
+
     } catch (error) {
         log(`❌ Failed to start bot: ${error.message}`, 'error');
         alert(`Error: ${error.message}`);
@@ -1665,12 +1665,12 @@ document.getElementById('stopBtn').addEventListener('click', () => {
         clearTimeout(monitorTimeout);
         monitorTimeout = null;
     }
-    
+
     document.getElementById('startBtn').style.display = 'block';
     document.getElementById('stopBtn').style.display = 'none';
     document.getElementById('privateKey').disabled = false;
     document.getElementById('rpcUrl').disabled = false;
-    
+
     updateStatus('STOPPED', 'stopped');
     log('🛑 Bot stopped', 'warning');
 });
@@ -1678,7 +1678,7 @@ document.getElementById('stopBtn').addEventListener('click', () => {
 document.getElementById('clearBtn').addEventListener('click', () => {
     if (confirm('Are you sure you want to clear all saved data (settings, stats, and history)?')) {
         clearPersistedData();
-        
+
 
         stats = {
             totalWins: 0,
@@ -1689,12 +1689,12 @@ document.getElementById('clearBtn').addEventListener('click', () => {
             roundsSkipped: 0
         };
         betHistory = [];
-        
+
 
         updateStats();
         updateHistoryDisplay();
         updatePnlMetrics();
-        
+
         alert('All data cleared successfully!');
     }
 });
@@ -1735,7 +1735,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateOrePrice();
 
     setInterval(updateOrePrice, 30000);
-    
+
     const hideSkippedFilter = document.getElementById('hideSkippedFilter');
     if (hideSkippedFilter) {
         hideSkippedFilter.addEventListener('change', updateHistoryDisplay);
@@ -1744,14 +1744,14 @@ window.addEventListener('DOMContentLoaded', () => {
 
 async function showBoardModal(betIndex, showFinal = false) {
     const bet = betHistory[betIndex];
-    
+
     const boardStateToShow = showFinal ? bet.finalBoardState : bet.boardState;
-    
+
     if (!bet || !boardStateToShow || boardStateToShow.length === 0) {
         alert(`No ${showFinal ? 'final' : 'initial'} board state available for this bet`);
         return;
     }
-    
+
 
     if (bet.slotsBeforeEnd === null || bet.slotsBeforeEnd === undefined) {
         if (bet.endSlot !== null && bet.endSlot !== undefined && bet.boardStateSlot !== null && bet.boardStateSlot !== undefined) {
@@ -1777,50 +1777,50 @@ async function showBoardModal(betIndex, showFinal = false) {
             }
         }
     }
-    
+
     const modal = document.getElementById('boardModal');
     const info = document.getElementById('modalBoardInfo');
     const container = document.getElementById('heatmapContainer');
     const header = modal.querySelector('.modal-header h2');
-    
+
 
     header.textContent = showFinal ? 'Final Board State' : 'Board State at Bet Time';
-    
+
 
     const numSquares = bet.betSquares ? bet.betSquares.length : 2;
     const totalBetCost = bet.bet * numSquares;
     const evToShow = showFinal ? bet.finalEv : bet.ev;
-    const evPercent = evToShow !== null && evToShow !== undefined 
-        ? (evToShow / totalBetCost) * 100 
+    const evPercent = evToShow !== null && evToShow !== undefined
+        ? (evToShow / totalBetCost) * 100
         : null;
-    
 
-    const evDisplay = evPercent !== null 
-        ? `${evPercent >= 0 ? '+' : ''}${evPercent.toFixed(2)}%` 
+
+    const evDisplay = evPercent !== null
+        ? `${evPercent >= 0 ? '+' : ''}${evPercent.toFixed(2)}%`
         : 'N/A';
-    
+
 
     const deployedBigInts = boardStateToShow.map(val => BigInt(val));
-    
+
 
     let motherlodeDisplay = '';
     if (showFinal && bet.motherlode !== undefined && bet.motherlode !== null) {
         const motherlodeFormatted = bet.motherlode.toFixed(2).replace(/\.?0+$/, '');
         motherlodeDisplay = ` | Motherlode: <span style="color: #58a6ff">${motherlodeFormatted} ORE</span>`;
     }
-    
+
     info.innerHTML = `
         <strong>Round ${bet.round}</strong> | 
         Bet: ${bet.bet.toFixed(4)} SOL | 
         EV: <span style="color: ${evPercent >= 0 ? '#7ee787' : '#ff7b72'}">${evDisplay}</span> | 
         Result: <span style="color: ${bet.won ? '#7ee787' : '#ff7b72'}">${bet.result}</span>${motherlodeDisplay}
     `;
-    
+
 
     const initialBoardState = showFinal ? bet.boardState : null;
     const varianceReductionSquares = bet.varianceReductionSquares || [];
     renderHeatmap(container, boardStateToShow, bet.betSquares || [], initialBoardState, varianceReductionSquares);
-    
+
 
     modal.classList.add('active');
 }
@@ -1833,10 +1833,10 @@ function closeBoardModal() {
 function showEditModal(betIndex) {
     const bet = betHistory[betIndex];
     if (!bet) return;
-    
+
     const modal = document.getElementById('editModal');
     const content = document.getElementById('editModalContent');
-    
+
     content.innerHTML = `
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
             <div class="input-group">
@@ -1909,9 +1909,9 @@ function showEditModal(betIndex) {
             <button onclick="closeEditModal()" style="flex: 1; background: #6e7681;">Cancel</button>
         </div>
     `;
-    
+
     modal.classList.add('active');
-    
+
     modal.onclick = (e) => {
         if (e.target === modal) {
             closeEditModal();
@@ -1928,7 +1928,7 @@ function closeEditModal() {
 function saveBetEdit(betIndex) {
     const bet = betHistory[betIndex];
     if (!bet) return;
-    
+
     const round = parseInt(document.getElementById('editRound').value);
     const betAmount = parseFloat(document.getElementById('editBet').value);
     const result = document.getElementById('editResult').value;
@@ -1942,19 +1942,19 @@ function saveBetEdit(betIndex) {
     const slotsBeforeEnd = slotsBeforeEndStr === '' ? null : parseInt(slotsBeforeEndStr);
     const endSlotStr = document.getElementById('editEndSlot').value.trim();
     const endSlot = endSlotStr === '' ? null : parseInt(endSlotStr);
-    
+
     const betSquaresStr = document.getElementById('editBetSquares').value.trim();
     const betSquares = betSquaresStr === '' ? [] : betSquaresStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-    
+
     const varianceReductionStr = document.getElementById('editVarianceReductionSquares').value.trim();
     const varianceReductionSquares = varianceReductionStr === '' ? [] : varianceReductionStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
-    
+
     const boardStateStr = document.getElementById('editBoardState').value.trim();
     const boardState = boardStateStr === '' ? [] : boardStateStr.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
-    
+
     const finalBoardStateStr = document.getElementById('editFinalBoardState').value.trim();
     const finalBoardState = finalBoardStateStr === '' ? null : finalBoardStateStr.split(',').map(s => parseFloat(s.trim())).filter(n => !isNaN(n));
-    
+
     bet.round = round;
     bet.bet = betAmount;
     bet.result = result;
@@ -1969,7 +1969,7 @@ function saveBetEdit(betIndex) {
     bet.varianceReductionSquares = varianceReductionSquares;
     bet.boardState = boardState;
     bet.finalBoardState = finalBoardState;
-    
+
     updateHistoryDisplay();
     saveHistory();
     closeEditModal();
@@ -1977,16 +1977,16 @@ function saveBetEdit(betIndex) {
 
 function renderHeatmap(container, boardState, betSquares, initialBoardState = null, varianceReductionSquares = []) {
     container.innerHTML = '';
-    
+
 
     const showIncreases = initialBoardState !== null && initialBoardState.length === boardState.length;
-    
+
 
     const values = boardState.map(val => Number(val));
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
     const range = maxVal - minVal || 1;
-    
+
 
     let increases = [];
     let minIncrease = 0, maxIncrease = 0, increaseRange = 1;
@@ -1996,12 +1996,12 @@ function renderHeatmap(container, boardState, betSquares, initialBoardState = nu
         maxIncrease = Math.max(...increases);
         increaseRange = maxIncrease - minIncrease || 1;
     }
-    
+
 
     for (let i = 0; i < 25; i++) {
         const cell = document.createElement('div');
         cell.className = 'heatmap-cell';
-        
+
 
         if (betSquares.includes(i)) {
             cell.classList.add('bet-on');
@@ -2010,39 +2010,39 @@ function renderHeatmap(container, boardState, betSquares, initialBoardState = nu
                 cell.classList.add('variance-reduction');
             }
         }
-        
+
 
         const value = Number(boardState[i]);
         const normalized = (value - minVal) / range;
         const r = Math.floor(45 + normalized * 68);
         const g = Math.floor(53 + normalized * 75);
         const b = Math.floor(72 + normalized * 78);
-        
+
         cell.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
-        
+
 
         const indexDiv = document.createElement('div');
         indexDiv.className = 'cell-index';
         indexDiv.textContent = `#${i}`;
-        
+
         const valueDiv = document.createElement('div');
         valueDiv.className = 'cell-value';
         const solValue = value / 1_000_000_000;
         valueDiv.textContent = solValue.toFixed(4);
-        
+
         cell.appendChild(indexDiv);
         cell.appendChild(valueDiv);
-        
+
 
         if (showIncreases) {
             const increaseDiv = document.createElement('div');
             increaseDiv.className = 'cell-increase';
             increaseDiv.style.fontSize = '10px';
             increaseDiv.style.marginTop = '2px';
-            
+
             const increase = increases[i] / 1_000_000_000;
             increaseDiv.textContent = `+${increase.toFixed(4)}`;
-            
+
 
             const increaseNormalized = (increases[i] - minIncrease) / increaseRange;
 
@@ -2058,10 +2058,10 @@ function renderHeatmap(container, boardState, betSquares, initialBoardState = nu
             }
             increaseDiv.style.color = `rgb(${incR}, ${incG}, 115)`;
             increaseDiv.style.fontWeight = 'bold';
-            
+
             cell.appendChild(increaseDiv);
         }
-        
+
         container.appendChild(cell);
     }
 }
