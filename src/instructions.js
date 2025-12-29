@@ -1,4 +1,4 @@
-function createDeployInstruction(walletPublicKey, automationAddress, boardAddress, minerAddress, roundAddress, amount, tileIndices) {
+function createDeployInstruction(walletPublicKey, automationAddress, boardAddress, configAddress, minerAddress, roundAddress, entropyVarAddress, amount, tileIndices) {
     const squares = Array(25).fill(false);
     tileIndices.forEach(index => {
         squares[index] = true;
@@ -23,9 +23,13 @@ function createDeployInstruction(walletPublicKey, automationAddress, boardAddres
             { pubkey: walletPublicKey, isSigner: false, isWritable: true },
             { pubkey: automationAddress, isSigner: false, isWritable: true },
             { pubkey: boardAddress, isSigner: false, isWritable: true },
+            { pubkey: configAddress, isSigner: false, isWritable: true },
             { pubkey: minerAddress, isSigner: false, isWritable: true },
             { pubkey: roundAddress, isSigner: false, isWritable: true },
-            { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false }
+            { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+            { pubkey: new solanaWeb3.PublicKey(PROGRAM_ID), isSigner: false, isWritable: false },
+            { pubkey: entropyVarAddress, isSigner: false, isWritable: true },
+            { pubkey: new solanaWeb3.PublicKey(ENTROPY_PROGRAM_ID), isSigner: false, isWritable: false }
         ],
         programId: new solanaWeb3.PublicKey(PROGRAM_ID),
         data: data

@@ -235,6 +235,10 @@ function treasuryPDA() {
     return findPDA(['treasury']);
 }
 
+function configPDA() {
+    return findPDA(['config']);
+}
+
 function log(message, type = 'info') {
     const logContainer = document.getElementById('logContainer');
     const entry = document.createElement('div');
@@ -385,7 +389,8 @@ async function getBoardData() {
     if (!response.value) {
         throw new Error('Board account not found');
     }
-    const view = new DataView(response.value.data.buffer);
+    const data = response.value.data;
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     return {
         round_id: view.getBigUint64(8, true),
         start_slot: view.getBigUint64(16, true),
@@ -400,7 +405,8 @@ async function getRoundData(roundId, commitment = 'processed') {
     if (!response.value) {
         throw new Error('Round account not found');
     }
-    const view = new DataView(response.value.data.buffer);
+    const data = response.value.data;
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
     const deployed = [];
     for (let i = 0; i < 25; i++) {
         deployed.push(view.getBigUint64(16 + (i * 8), true));
@@ -414,9 +420,8 @@ async function getMinerData() {
     if (!accountInfo) {
         return null;
     }
-    const view = new DataView(accountInfo.data.buffer);
-
-
+    const data = accountInfo.data;
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
     return {
         rewards_sol: view.getBigUint64(488, true),
@@ -445,10 +450,11 @@ async function getTreasuryData(forceRefresh = false) {
     if (!accountInfo) {
         throw new Error('Treasury account not found');
     }
-    const view = new DataView(accountInfo.data.buffer);
+    const data = accountInfo.data;
+    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
 
-
-    const motherlodeValue = Number(view.getBigUint64(16, true)) / Number(10n ** BigInt(11));
+    // Treasury layout: discriminator(8) + balance(8) + buffer_a(8) + motherlode(8)
+    const motherlodeValue = Number(view.getBigUint64(24, true)) / Number(10n ** BigInt(11));
 
 
     motherlodeCache = {
@@ -796,6 +802,8 @@ async function placeBet(roundId, tileIndices, amount, receiveTime, deployed, cur
     const roundAddress = roundPDA(roundId);
     const minerAddress = minerPDA(wallet.publicKey);
     const automationAddress = automationPDA(wallet.publicKey);
+    const configAddress = configPDA();
+    const entropyVarAddress = new solanaWeb3.PublicKey(VAR_ADDRESS);
 
 
     const ev = calculateEV(deployed, tileIndices, amount, motherlode);
@@ -804,8 +812,10 @@ async function placeBet(roundId, tileIndices, amount, receiveTime, deployed, cur
         wallet.publicKey,
         automationAddress,
         boardAddress,
+        configAddress,
         minerAddress,
         roundAddress,
+        entropyVarAddress,
         amount,
         tileIndices
     );
@@ -1234,7 +1244,7 @@ async function updateOrePrice() {
 
         if (orePriceUsd && solPriceUsd) {
             const orePriceSol = orePriceUsd / solPriceUsd;
-            const displayText = `${orePriceSol.toFixed(1)} ($${orePriceUsd.toFixed(1)})`;
+            const displayText = `${orePriceSol.toFixed(2)} ($${orePriceUsd.toFixed(1)})`;
             document.getElementById('orePriceDisplay').textContent = displayText;
 
             const priceInput = document.getElementById('orePrice');
