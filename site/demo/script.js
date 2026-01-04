@@ -152,12 +152,16 @@ function obfuscateRpcUrl(url) {
 
 function maskRpcUrlInput() {
     const rpcInput = document.getElementById('rpcUrl');
-    const actualUrl = rpcInput.value;
+    const currentValue = rpcInput.value;
+    
+    // If current value is already obfuscated, don't overwrite the actual URL
+    if (currentValue && currentValue.includes('*')) {
+        return; // Already masked, preserve existing data-actual-url
+    }
 
-    if (actualUrl && actualUrl.length > 0) {
-
-        rpcInput.setAttribute('data-actual-url', actualUrl);
-        rpcInput.value = obfuscateRpcUrl(actualUrl);
+    if (currentValue && currentValue.length > 0) {
+        rpcInput.setAttribute('data-actual-url', currentValue);
+        rpcInput.value = obfuscateRpcUrl(currentValue);
     }
 }
 
@@ -174,7 +178,33 @@ function unmaskRpcUrlInput() {
 function getActualRpcUrl() {
     const rpcInput = document.getElementById('rpcUrl');
     const actualUrl = rpcInput.getAttribute('data-actual-url');
-    return actualUrl || rpcInput.value;
+    
+    // If we have the actual URL in the attribute, use it
+    if (actualUrl) {
+        return actualUrl;
+    }
+    
+    // Check if the current value is obfuscated (contains asterisks)
+    const currentValue = rpcInput.value;
+    if (currentValue.includes('*')) {
+        // Value is obfuscated, try to get from localStorage
+        try {
+            const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                if (settings.rpcUrl && !settings.rpcUrl.includes('*')) {
+                    // Restore the actual URL to the attribute
+                    rpcInput.setAttribute('data-actual-url', settings.rpcUrl);
+                    return settings.rpcUrl;
+                }
+            }
+        } catch (error) {
+            console.error('Error retrieving RPC URL from storage:', error);
+        }
+    }
+    
+    // Fallback to current value (should be actual URL if not obfuscated)
+    return currentValue;
 }
 
 function loadPersistedData() {
@@ -184,8 +214,10 @@ function loadPersistedData() {
         try {
             const settings = JSON.parse(savedSettings);
             if (settings.rpcUrl) {
-                document.getElementById('rpcUrl').value = settings.rpcUrl;
-
+                const rpcInput = document.getElementById('rpcUrl');
+                rpcInput.value = settings.rpcUrl;
+                // Store actual URL immediately before masking
+                rpcInput.setAttribute('data-actual-url', settings.rpcUrl);
                 setTimeout(maskRpcUrlInput, 100);
             }
             if (settings.betAmount) document.getElementById('betAmount').value = settings.betAmount;
@@ -349,7 +381,9 @@ async function refreshConnection() {
     const rpcUrl = getActualRpcUrl();
     connection = new solanaWeb3.Connection(rpcUrl, {
         commitment: 'confirmed',
-        confirmTransactionInitialTimeout: 60000
+        confirmTransactionInitialTimeout: 60000,
+        fetch: fetch,
+        disableRetryOnRateLimit: false
     });
     log('🔄 Connection refreshed', 'info');
     return connection;
@@ -458,18 +492,25 @@ function updateDeployedGrid(deployed) {
 
 async function getBoardData() {
     const boardAddress = boardPDA();
-    const response = await connection.getAccountInfoAndContext(boardAddress);
-    if (!response.value) {
-        throw new Error('Board account not found');
+    try {
+        const response = await connection.getAccountInfoAndContext(boardAddress);
+        if (!response.value) {
+            throw new Error('Board account not found');
+        }
+        const data = response.value.data;
+        const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        return {
+            round_id: view.getBigUint64(8, true),
+            start_slot: view.getBigUint64(16, true),
+            end_slot: view.getBigUint64(24, true),
+            slot: response.context.slot
+        };
+    } catch (error) {
+        if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
+            throw new Error(`RPC connection failed: ${error.message}. Check your RPC URL and network connectivity.`);
+        }
+        throw error;
     }
-    const data = response.value.data;
-    const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
-    return {
-        round_id: view.getBigUint64(8, true),
-        start_slot: view.getBigUint64(16, true),
-        end_slot: view.getBigUint64(24, true),
-        slot: response.context.slot
-    };
 }
 
 async function getRoundData(roundId, commitment = 'processed') {
@@ -1639,14 +1680,19 @@ async function monitorRound() {
         consecutiveErrors = 0;
 
     } catch (error) {
-        log(`❌ Error: ${error.message}`, 'error');
-        console.error(error);
+        const errorMsg = error.message || String(error);
+        log(`❌ Error: ${errorMsg}`, 'error');
+        console.error('Full error:', error);
 
         consecutiveErrors++;
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
             log(`⚠️ ${consecutiveErrors} consecutive errors detected, refreshing connection...`, 'warning');
-            await refreshConnection();
-            consecutiveErrors = 0;
+            try {
+                await refreshConnection();
+                consecutiveErrors = 0;
+            } catch (refreshError) {
+                log(`❌ Failed to refresh connection: ${refreshError.message}`, 'error');
+            }
         }
     } finally {
 
@@ -1703,10 +1749,24 @@ document.getElementById('startBtn').addEventListener('click', async () => {
 
         connection = new solanaWeb3.Connection(rpcUrl, {
             commitment: 'confirmed',
-            confirmTransactionInitialTimeout: 60000
+            confirmTransactionInitialTimeout: 60000,
+            fetch: fetch,
+            disableRetryOnRateLimit: false
         });
         connection._lastRefresh = Date.now();
 
+        // Test RPC connectivity
+        log('🔍 Testing RPC connection...', 'info');
+        try {
+            await connection.getSlot();
+            log('✓ RPC connection successful', 'success');
+        } catch (error) {
+            const errorMsg = error.message || String(error);
+            if (errorMsg.includes('Failed to fetch') || errorMsg.includes('fetch')) {
+                throw new Error(`RPC connection failed: Unable to reach RPC endpoint. Please check:\n1. RPC URL is correct\n2. Network connectivity\n3. RPC endpoint is not blocking requests\n4. CORS settings if applicable\n\nOriginal error: ${errorMsg}`);
+            }
+            throw error;
+        }
 
         consecutiveErrors = 0;
         blockhashCache = { blockhash: null, lastFetchedSlot: null };
