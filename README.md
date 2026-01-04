@@ -171,26 +171,7 @@ The bot automatically checkpoints your miner account when:
 
 ## Safety
 
-- Private keys are stored only in browser memory (never sent to servers)
-- RPC URLs are masked in the UI for security
+- Private keys are never stored or sent to servers
+- RPC URLs and keys are masked in the UI for security
 - All settings persist locally in your browser
 - Use "Clear History" to remove all stored data
-
-## Troubleshooting
-
-**Bot not placing bets:**
-- Check EV threshold is not too high
-- Verify sufficient SOL balance
-- Ensure RPC URL is valid and responsive
-- Check that slots remaining threshold allows time for bets
-
-**Missed bets:**
-- Reduce "Slots Remaining" threshold for earlier betting
-- Use a faster RPC endpoint
-- Check network latency
-
-**Connection errors:**
-- Bot automatically refreshes connection after 5 consecutive errors
-- Verify RPC URL is correct and accessible
-- Check browser console for detailed error messages
-
