@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pick</title>
+    <script src="https://unpkg.com/@solana/web3.js@1.87.6/lib/index.iife.min.js"></script>
+    <script src="./script.js" defer></script>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-content">
+            <div class="header-title-section">
+                <h1>
+                    Pick
+                </h1>
+                <p class="subtitle">Your Ore Mining Tool</p>
+            </div>
+            <div class="header-attribution">
+                made with &lt;3 by <a href="https://x.com/fauxfire_" target="_blank" rel="noopener noreferrer">@fauxfire</a>
+            </div>
+        </div>
+    </header>
+    <div class="container">
+        <div class="main-content">
+            <div class="panel">
+                <div class="grid" id="deployedGrid"></div>
+            </div>
+
+            <div class="panel">
+                <div class="accordion active">
+                    <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <h2>Config</h2>
+                        <span class="accordion-toggle">▼</span>
+                    </div>
+                    <div class="accordion-content">
+                        <div class="input-group">
+                            <label>Private Key (Base58, JSON array, or comma-separated):</label>
+                            <input type="password" id="privateKey" placeholder="Enter your private key...">
+                        </div>
+                        <div class="input-group">
+                            <label>RPC URL:</label>
+                            <input type="password" id="rpcUrl" placeholder="Enter RPC URL...">
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px;">
+                            <div class="input-group">
+                                <label>Bet Amount (SOL):</label>
+                                <input type="number" id="betAmount" value="0.01" step="0.001" min="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label>Secondary Bet (SOL):</label>
+                                <input type="number" id="secondaryBetAmount" value="0.005" step="0.001" min="0.001">
+                            </div>
+                            <div class="input-group">
+                                <label>ORE Price (SOL):</label>
+                                <input type="number" id="orePrice" value="0.5" step="0.01" min="0.00001" readonly>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
+                            <div class="input-group">
+                                <label>ORE Price Multiplier:</label>
+                                <input type="number" id="orePriceMultiplier" value="0.85" step="0.01" min="0.01" max="1">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
+                            <div class="input-group">
+                                <label>Min EV Threshold:</label>
+                                <input type="number" id="evThreshold" value="5" step="0.5" min="0">
+                            </div>
+                            <div class="input-group">
+                                <label># Lowest Squares:</label>
+                                <input type="number" id="lowestSquaresCount" value="3" step="1" min="1" max="25">
+                            </div>
+                            <div class="input-group">
+                                <label>Skip Lowest Squares:</label>
+                                <input type="number" id="lowestSquaresSkip" value="0" step="1" min="0" max="24">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-top: 15px;">
+                            <div class="input-group">
+                                <label>Slots Remaining:</label>
+                                <input type="number" id="lowestSquaresSlots" value="30" step="1" min="1" max="150">
+                            </div>
+                        </div>
+                        <div class="input-group" style="margin-top: 15px;">
+                            <label>Strategy:</label>
+                            <select id="strategySelect">
+                                <option value="xLowest">X Lowest Squares</option>
+                                <option value="optimal">Optimal</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-top: 15px;">
+                            <label style="display: flex; align-items: center; gap: 10px;">
+                                <input type="checkbox" id="varianceReduction" style="width: auto;">
+                                <span>Variance Reduction (sacrifice 10% EV for lower variance)</span>
+                            </label>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button id="startBtn">Start Bot</button>
+                            <button id="stopBtn" class="stop" style="display: none;">Stop Bot</button>
+                            <button id="clearBtn" style="background: #6e7681;" title="Clear saved settings, stats, and history">Clear History</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div id="logContainer" class="log"></div>
+            </div>
+        </div>
+
+        <div class="history-sidebar">
+            <div class="panel">
+                <div id="statusDisplay" class="status stopped">STOPPED</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Current Round</div>
+                        <div class="stat-value" id="currentRound">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Wallet Balance</div>
+                        <div class="stat-value" id="walletBalance">-</div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <div class="stat-label">Actual Win Rate</div>
+                        <div class="stat-value" id="actualWinRate">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Expected Win Rate</div>
+                        <div class="stat-value" id="expectedWinRate">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Rounds Played</div>
+                        <div class="stat-value" id="roundsPlayed">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Rounds Won</div>
+                        <div class="stat-value" id="roundsWon">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Rounds Skipped</div>
+                        <div class="stat-value" id="roundsSkipped">0</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Current Motherlode</div>
+                        <div class="stat-value" id="motherlodeDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">ORE Price</div>
+                        <div class="stat-value" id="orePriceDisplay">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Unclaimed ORE</div>
+                        <div class="stat-value" id="unclaimedOre">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h2 style="margin: 0;">📋 Bet History</h2>
+                    <label style="display: flex; align-items: center; gap: 8px; font-size: 14px; color: #8b949e; cursor: pointer;">
+                        <input type="checkbox" id="hideSkippedFilter" style="width: auto; cursor: pointer;">
+                        <span>Hide Skipped</span>
+                    </label>
+                </div>
+                <div class="history-header">
+                    <div>Round</div>
+                    <div>Bet</div>
+                    <div>Result</div>
+                    <div>Win%</div>
+                    <div>EV%</div>
+                    <div>Final EV%</div>
+                    <div>Board</div>
+                    <div>Final</div>
+                    <div>Edit</div>
+                </div>
+                <div class="history-scroll" id="historyContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div id="boardModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Board State at Bet Time</h2>
+                <button class="modal-close" onclick="closeBoardModal()">✕</button>
+            </div>
+            <div id="modalBoardInfo" style="color: #8b949e; font-size: 12px; margin-bottom: 10px;"></div>
+            <div id="heatmapContainer" class="heatmap-grid"></div>
+            <div class="heatmap-legend">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2d3748;"></div>
+                    <span>Low</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #4a5568;"></div>
+                    <span>Medium</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #718096;"></div>
+                    <span>High</span>
+                </div>
+                <div class="legend-item">
+                    <div style="border: 3px solid #58a6ff; width: 20px; height: 20px; border-radius: 3px;"></div>
+                    <span>Your Bet</span>
+                </div>
+                <div class="legend-item">
+                    <div style="border: 3px solid #ff8c00; width: 20px; height: 20px; border-radius: 3px;"></div>
+                    <span>Variance Reduction</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>Edit Bet History</h2>
+                <button class="modal-close" onclick="closeEditModal()">✕</button>
+            </div>
+            <div id="editModalContent" style="padding: 20px;">
+            </div>
+        </div>
+    </div>
+</body>
+</html>
