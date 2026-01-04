@@ -473,7 +473,8 @@ button:disabled {
 }
 
 .grid-cell.optimal-square {
-    border: 1px dashed var(--text-faint);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 8px rgba(255, 107, 53, 0.4);
 }
 
 .grid-cell.optimal-square::after {
